@@ -587,7 +587,7 @@ bool Agrumino::boolRead(int address)
 
 bool Agrumino::intArbitraryWrite(int address, int value)
 {
-    if(address>MAX_MEMORY-1 || address<5)
+    if(address>MAX_MEMORY-1 || address<10)
         return false;
 
     int lastAvaiableAddress = getLastAvaiableAddress();
@@ -611,7 +611,7 @@ bool Agrumino::intArbitraryWrite(int address, int value)
 
 bool Agrumino::floatArbitraryWrite(int address, float value)
 {
-    if(address+3>MAX_MEMORY-1 || address<5)
+    if(address+3>MAX_MEMORY-1 || address<10)
         return false;
 
     int lastAvaiableAddress = getLastAvaiableAddress();
@@ -645,7 +645,7 @@ bool Agrumino::floatArbitraryWrite(int address, float value)
 
 bool Agrumino::charArbitraryWrite(int address, char value)
 {
-    if(address>MAX_MEMORY-1 || address<5)
+    if(address>MAX_MEMORY-1 || address<10)
         return false;
 
     int lastAvaiableAddress = getLastAvaiableAddress();
@@ -668,7 +668,7 @@ bool Agrumino::charArbitraryWrite(int address, char value)
 
 bool Agrumino::boolArbitraryWrite(int address, bool value)
 {
-    if(address>MAX_MEMORY-1 || address<5)
+    if(address>MAX_MEMORY-1 || address<10)
         return false;
 
     int lastAvaiableAddress = getLastAvaiableAddress();
