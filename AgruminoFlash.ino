@@ -19,7 +19,7 @@ void loop() {
   agrumino.turnBoardOn();
 
   //starting from scratch, initializing the flash
-  bool initialized = agrumino.initializeMemory(4096);
+  bool initialized = agrumino.initializeMemory();
   
   if(initialized)
     Serial.println("Successful initialization :)");
@@ -57,12 +57,12 @@ void loop() {
   Serial.println("------------------------");
   
   //let's restart
-  initialized = agrumino.initializeMemory(4096);
+  initialized = agrumino.initializeMemory();
 
   /*Saving 2 ints, 4 floats, 2 bools and a char, then reading them*/
   beginInts = agrumino.getLastAvaiableAddress();
   for(int i=0; i<2; i++)
-    agrumino.intRead(12);
+    agrumino.intWrite(12);
   endInts = agrumino.getLastAvaiableAddress()-1;
   
   int beginFloats = agrumino.getLastAvaiableAddress();
@@ -77,24 +77,24 @@ void loop() {
 
   int beginChars = agrumino.getLastAvaiableAddress();
   for(int i=0; i<1; i++)
-    agrumino.floatWrite(1.3);
+    agrumino.charWrite(1.3);
   int endChars = agrumino.getLastAvaiableAddress()-1; //note that for every float there's a 4B jump
 
-  Serial.println("If it is all right, then I should have jumped from address "+String(beginInts)+" to address "+String(beginInts+2+(4*4)+(2)+1+1)+" ---> "+String(agrumino.getLastAvaiableAddress()));
+  Serial.println("If it is all right, then I should have jumped from address "+String(beginInts)+" to address "+String(beginInts+2+(4*4)+(2)+1)+" ---> "+String(agrumino.getLastAvaiableAddress()));
 
   //printing the floats
   for(int i=beginFloats; i<endFloats; i+=4)
     Serial.println("Here's a float: "+String(agrumino.floatRead(i)));
 
   //casual access: overriding the second integer with a char
-  agrumino.charArbitraryWrite(beginInts+1,'c');
-  Serial.println("Is it a char? --> "+String(agrumino.charRead(beginInts+1)));
+  agrumino.charArbitraryWrite(beginChars+1,'c');
+  Serial.println("Is it a char? --> "+String(agrumino.charRead(beginChars+1)));
 
   //now freeing up that address
-  agrumino.free(beginInts+1,0);
+  agrumino.free(beginChars+1,0);
 
   //and checking if it worked!
-  Serial.println("Is it free? (1 if yes) -->"+String(agrumino.checkAvaiability(beginInts+1)));
+  Serial.println("Is it free? (1 if yes) -->"+String(agrumino.isFree(beginChars+1)));
 
   //one minute just to read everything
   delay(60000);

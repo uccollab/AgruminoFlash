@@ -52,16 +52,16 @@ class Agrumino {
     float readLux();
 
     //methods that allows to read/write from the ESP8266 flash in order to reduce Wifi connection number and to store datas and configurations
-    bool initializeMemory(int size);
-    void secondInitializer();
+    bool initializeMemory();
     bool getDirty();
     void setDirty(bool isDirty);
     int getFreeMemory();
     int getMaxMemory();
     int getLastAvaiableAddress();
-    bool isFree(int address);
     bool free(int address, int type);
-    bool checkAvaiability(int address);
+    bool isFree(int address);
+    void updateFreeMemory(int byte);
+    void updateLastAddress(int byte);
     bool intWrite(int value);
     bool floatWrite(float value);
     bool charWrite(char value);
@@ -74,8 +74,7 @@ class Agrumino {
     bool floatArbitraryWrite(int address, float value);
     bool charArbitraryWrite(int address, char value);
     bool boolArbitraryWrite(int address, bool value);
-    void updateFreeMemory(int byte);
-    void updateLastAddress(int byte);
+
 
 
  

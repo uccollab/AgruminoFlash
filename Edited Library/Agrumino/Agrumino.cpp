@@ -309,13 +309,11 @@ boolean Agrumino::checkBattery() {
 /*initializes the Agrumino memory by putting (255) all over it's flash, except
  * for reserved addresses. Returns false if an invalid size is passed, or if the
    board isn't active*/
-bool Agrumino::initializeMemory(int size)
+bool Agrumino::initializeMemory()
 {
-    if(size>MAX_MEMORY)
-        return false;
     if(isBoardOn())
     {
-        EEPROM.begin(size);
+        EEPROM.begin(MAX_MEMORY);
 
         /*in the logic structure the first address tells us if the memory is "dirty,
           A.K.A if there's some data that still needs to be sent to the server. Dirty should
@@ -327,7 +325,7 @@ bool Agrumino::initializeMemory(int size)
             EEPROM.put(i,0);
             EEPROM.commit();
         }
-        for(int i=10; i<size; i++)
+        for(int i=10; i<MAX_MEMORY; i++)
         {
             EEPROM.write(i,255);
             EEPROM.commit();
@@ -387,17 +385,6 @@ int Agrumino::getLastAvaiableAddress()
     return (int) result;
 }
 
-//returns a boolean depeinding on if the passed address contains datas or not
-bool Agrumino::isFree(int address)
-{
-    if(address<5)
-        return false;
-    if(EEPROM.read(address)==255)
-        return true;
-    return false;
-
-}
-
 /*frees up an address, by putting -1 in it. Not that this invalidates the
  * information in the LASTFREEADD address (that assumes sequentiality in writes)
   Beside the address it takes also the type of data:
@@ -430,16 +417,16 @@ bool Agrumino::free(int address, int type)
 
 }
 
-bool Agrumino::checkAvaiability(int address)
+//returns a boolean depeinding on if the passed address contains datas or not
+bool Agrumino::isFree(int address)
 {
     //preventing the user from accessing reserve addresses
     if(address<10)
         return false;
-
     if(EEPROM.read(address)==255)
         return true;
-    else
-        return false;
+    return false;
+
 }
 
 //for code readibility: updates the two registers with a specific byte offset
@@ -593,7 +580,7 @@ bool Agrumino::intArbitraryWrite(int address, int value)
     int lastAvaiableAddress = getLastAvaiableAddress();
     int freeMemory = getFreeMemory();
 
-    bool avaiability = checkAvaiability(address);
+    bool avaiability = isFree(address);
     EEPROM.write(address,value);
 
     //the only case in which LASTFREEADD is still useful
@@ -617,7 +604,7 @@ bool Agrumino::floatArbitraryWrite(int address, float value)
     int lastAvaiableAddress = getLastAvaiableAddress();
     int freeMemory = getFreeMemory();
 
-    bool avaiability = checkAvaiability(address);
+    bool avaiability = isFree(address);
 
 
     union u_tag
@@ -651,7 +638,7 @@ bool Agrumino::charArbitraryWrite(int address, char value)
     int lastAvaiableAddress = getLastAvaiableAddress();
     int freeMemory = getFreeMemory();
 
-    bool avaiability = checkAvaiability(address);
+    bool avaiability = isFree(address);
 
     EEPROM.write(address,value);
     EEPROM.commit();
@@ -674,7 +661,7 @@ bool Agrumino::boolArbitraryWrite(int address, bool value)
     int lastAvaiableAddress = getLastAvaiableAddress();
     int freeMemory = getFreeMemory();
 
-    bool avaiability = checkAvaiability(address);
+    bool avaiability = isFree(address);
 
     EEPROM.write(address,value);
     EEPROM.commit();
