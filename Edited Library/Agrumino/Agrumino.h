@@ -53,6 +53,7 @@ class Agrumino {
 
     //methods that allows to read/write from the ESP8266 flash in order to reduce Wifi connection number and to store datas and configurations
     bool initializeMemory();
+    bool enableMemory();
     bool getDirty();
     void setDirty(bool isDirty);
     int getFreeMemory();
@@ -74,8 +75,11 @@ class Agrumino {
     bool floatArbitraryWrite(int address, float value);
     bool charArbitraryWrite(int address, char value);
     bool boolArbitraryWrite(int address, bool value);
-
-
+    int getStartAddress();
+    void setStartAddress(int val);
+    int getHours();
+    void incrHours();
+    void RSTHours();
 
  
   private:

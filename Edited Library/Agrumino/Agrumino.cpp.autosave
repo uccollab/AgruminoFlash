@@ -322,13 +322,8 @@ bool Agrumino::initializeMemory()
           A.K.A if there's some data that still needs to be sent to the server. Dirty should
           always be correctly handled, in order to avoid data loss*/
 
-        //writing -1 on all the address, excluding the reserved ones
-        for(int i=0; i<20; i++)
-        {
-            EEPROM.put(i,0);
-            EEPROM.commit();
-        }
-        for(int i=20; i<MAX_MEMORY; i++)
+        //writing 255 on all the address, excluding the reserved ones
+        for(int i=0; i<MAX_MEMORY; i++)
         {
             EEPROM.write(i,255);
             EEPROM.commit();
@@ -342,8 +337,7 @@ bool Agrumino::initializeMemory()
         EEPROM.commit();
         EEPROM.put(START_ADDRESS,USERSPACE);
         EEPROM.commit();
-        EEPROM.put(HOURS,0);
-        EEPROM.commit();
+        RSTHours();
         setDirty(false);
         return true;
     }
@@ -359,7 +353,7 @@ bool Agrumino::enableMemory()
 //returns a boolean depending on the presence on datas on the flash
 bool Agrumino::getDirty()
 {
-    return EEPROM.read(DIRTY);
+    return (bool) EEPROM.read(DIRTY);
 }
 
 /*Sets the first address of the flash storage to either 1 or 0.
@@ -367,10 +361,7 @@ bool Agrumino::getDirty()
   or not.*/
 void Agrumino::setDirty(bool isDirty)
 {
-    if(isDirty)
-        EEPROM.write(DIRTY,1);
-    else
-        EEPROM.write(DIRTY,0);
+    EEPROM.put(DIRTY,isDirty);
     EEPROM.commit();
 }
 
@@ -482,7 +473,7 @@ void Agrumino::updateFreeMemory(int byte)
     EEPROM.commit();
 }
 
-/*the following functionts handles the sequential writing and reading of datas.
+/*the following functions handles the sequential writing and reading of datas.
   This means that the flash memory is threated as a linear list, and it is not
   possible to manually write specific bytes. If the user wants to write to specific
   bytes the arbitrary functions should be used (scroll down). It must be noted that
