@@ -16,12 +16,14 @@ int hours = 4; //change this to change the frequency of the data pushing
 int sleepTime = 10; //time for deepsleep in seconds: change to rest more or less
 
 //temp variable to store the addresses
+int attUSBADD;
+int chargADD;
+int buttonADD;
 int tempADD;
 int soilADD;
 int illADD;
 int voltADD;
-int attUSBADD;
-int chargADD;
+int battLVLADD;
 
 //tells us if the memory is dirty
 boolean wrote=false;
@@ -52,24 +54,29 @@ void loop()
           //Reading all the datas from the flash
           Serial.println("("+String(h)+")");
           //getting the address of every sensor data, based on the offset of its data type
-          tempADD = agrumino.getStartAddress();
+          attUSBADD = agrumino.getStartAddress();
+          chargADD = attUSBADD+1 ;
+          buttonADD = chargADD+1;
+          tempADD = buttonADD+1;
           soilADD = tempADD+4;
-          illADD = soilADD+1;
+          illADD = soilADD+4;
           voltADD = illADD+4;
-          attUSBADD = voltADD+4;
-          chargADD = attUSBADD+1;
+          battLVLADD = voltADD+4;
+
 
           //printing the values obtained from the memory
           Serial.println("\nREAD FROM FLASH: ");
           Serial.println("isAttachedToUSB:   " + String(agrumino.boolRead(attUSBADD)));
           Serial.println("isBatteryCharging: " + String(agrumino.boolRead(chargADD)));
+          Serial.println("isButtonPressed: "+String(agrumino.boolRead(buttonADD)));
           Serial.println("temperature:       " + String(agrumino.floatRead(tempADD)));
-          Serial.println("soilMoisture:      " + String(agrumino.intRead(soilADD)));
+          Serial.println("soilMoisture:      " + String(agrumino.floatRead(soilADD)));
           Serial.println("illuminance :      " + String(agrumino.floatRead(illADD)));
           Serial.println("batteryVoltage :   " + String(agrumino.floatRead(voltADD)));
+          Serial.println("batteryLVL: "+String(agrumino.intRead(battLVLADD)));
           Serial.println("");
 
-          agrumino.setStartAddress(chargADD+1); //updating the starting point for the next read
+          agrumino.setStartAddress(battLVLADD+1); //updating the starting point for the next read
           h++;
       }
 
@@ -85,33 +92,19 @@ void loop()
   {
       //collecting sensors data
       Serial.println("\nREADING DATA...");
-      boolean isAttachedToUSB = agrumino.isAttachedToUSB();
+      boolean isAttachedToUSB =   agrumino.isAttachedToUSB();
       boolean isBatteryCharging = agrumino.isBatteryCharging();
-      float temperature = agrumino.readTempC();
-      unsigned int soilMoisture = agrumino.readSoil();
-      float illuminance = agrumino.readLux();
-      float batteryVoltage = agrumino.readBatteryVoltage();
+      boolean isButtonPressed =   agrumino.isButtonPressed();
+      float temperature =         agrumino.readTempC();
+      float soilMoisture = agrumino.readSoilRaw();
+      float illuminance =         agrumino.readLux();
+      float batteryVoltage =      agrumino.readBatteryVoltage();
+      unsigned int batteryLevel = agrumino.readBatteryLevel();
     
       
       Serial.println("\nSTORING DATA IN FLASH...");
-      
+
       //reading the different data, and storing them into the flash memory. Also backupping the registers of every data
-      tempADD = agrumino.getLastAvaiableAddress();
-      agrumino.floatWrite(temperature);
-      Serial.println("wrote the temperature (float) in REG_"+String(tempADD));
-      
-      soilADD = agrumino.getLastAvaiableAddress();
-      agrumino.intWrite(soilMoisture);
-      Serial.println("wrote the moist (int) in REG_"+String(soilADD));
-
-      illADD = agrumino.getLastAvaiableAddress();
-      agrumino.floatWrite(illuminance);
-      Serial.println("wrote the ill. (float) in REG_"+String(illADD));
-
-      voltADD = agrumino.getLastAvaiableAddress();
-      agrumino.floatWrite(batteryVoltage);
-      Serial.println("wrote the battery Voltage (float) in REG_"+String(voltADD));
-
       attUSBADD = agrumino.getLastAvaiableAddress();
       agrumino.boolWrite(isAttachedToUSB);
       Serial.println("wrote attacchedUSB (bool) in REG_"+String(attUSBADD));
@@ -120,6 +113,30 @@ void loop()
       agrumino.boolWrite(isBatteryCharging);
       Serial.println("wrote chargBatt (bool) in REG_"+String(chargADD));
 
+      buttonADD = agrumino.getLastAvaiableAddress();
+      agrumino.boolWrite(isButtonPressed);
+      Serial.println("wrote button status (bool) in REG_"+String(buttonADD));
+      
+      tempADD = agrumino.getLastAvaiableAddress();
+      agrumino.floatWrite(temperature);
+      Serial.println("wrote the temperature (float) in REG_"+String(tempADD));
+      
+      soilADD = agrumino.getLastAvaiableAddress();
+      agrumino.floatWrite(soilMoisture);
+      Serial.println("wrote the soil (int) in REG_"+String(soilADD));
+
+      illADD = agrumino.getLastAvaiableAddress();
+      agrumino.floatWrite(illuminance);
+      Serial.println("wrote the ill. (float) in REG_"+String(illADD));
+
+      voltADD = agrumino.getLastAvaiableAddress();
+      agrumino.floatWrite(batteryVoltage);
+      Serial.println("wrote the battery Voltage (float) in REG_"+String(voltADD));
+            
+      battLVLADD = agrumino.getLastAvaiableAddress();
+      agrumino.intWrite(batteryLevel);
+      Serial.println("wrote the battery level (int) in REG_"+String(battLVLADD));
+
       //increasing the hours counter
       agrumino.incrHours();
             
@@ -127,10 +144,12 @@ void loop()
       Serial.println("\nJUST STORED IN MEMORY: ");
       Serial.println("isAttachedToUSB:   " + String(agrumino.boolRead(attUSBADD)));
       Serial.println("isBatteryCharging: " + String(agrumino.boolRead(chargADD)));
+      Serial.println("isButtonPressed: "+String(agrumino.boolRead(buttonADD)));
       Serial.println("temperature:       " + String(agrumino.floatRead(tempADD)));
-      Serial.println("soilMoisture:      " + String(agrumino.intRead(soilADD)));
+      Serial.println("soilMoisture:      " + String(agrumino.floatRead(soilADD)));
       Serial.println("illuminance :      " + String(agrumino.floatRead(illADD)));
       Serial.println("batteryVoltage :   " + String(agrumino.floatRead(voltADD)));
+      Serial.println("batteryLevel: "+String(agrumino.intRead(battLVLADD)));
       Serial.println("");
   }
 
