@@ -31,11 +31,11 @@
 
 //Addresses for flash utility
 #define DIRTY 0 //tells the user if the memory is "dirty" A.K.A if there's some data that need to be pushed. Must be manually handled by the user
-#define LASTFREEADD 1 //tells the user the last free index (reliable only if writing sequentially)
-#define FREE_MEMORY 5 //tells the user how many addresses are free
+#define LASTFREEADD 1 //address that tells the user the last free index (reliable only if writing sequentially)
+#define FREE_MEMORY 5 //address containing how many Bites of memory are free
 #define START_ADDRESS 10 //starting address to read the datas (for RST survive)
-#define HOURS 14 //how many hours I've used to wrote data
-#define USERSPACE 20 //the index from which the user can start writes
+#define HOURS 14 //register for keeping the amount of hours since last data push
+#define USERSPACE 20 //the index from which the user can start writing data
 #define MAX_MEMORY 4096 //fixed max flash size
 
 ////////////
@@ -309,8 +309,8 @@ boolean Agrumino::checkBattery() {
   }
 }
 
-/*initializes the Agrumino memory by putting (255) all over it's flash, except
- * for reserved addresses. Returns false if an invalid size is passed, or if the
+/*initializes the Agrumino memory by putting (255) all over it's flash, then
+ * sets the reserved addresses. Returns false if the
    board isn't active*/
 bool Agrumino::initializeMemory()
 {
@@ -318,33 +318,28 @@ bool Agrumino::initializeMemory()
     {
         EEPROM.begin(MAX_MEMORY);
 
-        /*in the logic structure the first address tells us if the memory is "dirty,
-          A.K.A if there's some data that still needs to be sent to the server. Dirty should
-          always be correctly handled, in order to avoid data loss*/
-
         //writing 255 on all the address, excluding the reserved ones
         for(int i=0; i<MAX_MEMORY; i++)
         {
             EEPROM.write(i,255);
             EEPROM.commit();
         }
-        //updating the last avaiable address,
-        //the free memory and the presence of dirty datas
-        EEPROM.put(LASTFREEADD,USERSPACE);
+        EEPROM.put(LASTFREEADD,USERSPACE); //setting the first address in which the user can write
         EEPROM.commit();
         int m = MAX_MEMORY-20;
-        EEPROM.put(FREE_MEMORY,m);
+        EEPROM.put(FREE_MEMORY,m); //setting the free memory
         EEPROM.commit();
-        EEPROM.put(START_ADDRESS,USERSPACE);
+        EEPROM.put(START_ADDRESS,USERSPACE); //setting the start address as the first user address, since the memory is empty
         EEPROM.commit();
-        RSTHours();
-        setDirty(false);
+        RSTHours(); //setting the hours without push as 0
+        setDirty(false); //flagging the memory as "clean"
         return true;
     }
     else
         return false;
 }
 
+//useful to use the memory without re-initializing it (i.e.: after a RST)
 bool Agrumino::enableMemory()
 {
     EEPROM.begin(MAX_MEMORY);
@@ -356,7 +351,7 @@ bool Agrumino::getDirty()
     return (bool) EEPROM.read(DIRTY);
 }
 
-/*Sets the first address of the flash storage to either 1 or 0.
+/*Sets the dirty address of the flash storage to either 1 or 0.
   This tells the user if there are some datas that still needs to be used (i.e pushed on the server)
   or not.*/
 void Agrumino::setDirty(bool isDirty)
@@ -387,9 +382,9 @@ int Agrumino::getLastAvaiableAddress()
     return (int) result;
 }
 
-/*frees up an address, by putting -1 in it. Not that this invalidates the
+/*frees up an address, by putting 255 in it. Note that this invalidates the
  * information in the LASTFREEADD address (that assumes sequentiality in writes)
-  Beside the address it takes also the type of data:
+  Other than the address that must be cleaned it takes also the type of data:
   0 = 1B data (int/char/bool), 1 = 4B data (float)
 
   returns a boolean depending on if the operation was successful*/
@@ -400,7 +395,8 @@ bool Agrumino::free(int address, int type)
     {
         EEPROM.write(address,255);
         EEPROM.commit();
-        updateFreeMemory(1);
+        EEPROM.put(FREE_MEMORY,(getFreeMemory()+1));
+        EEPROM.commit();
         return true;
     }
     //float case
@@ -410,7 +406,8 @@ bool Agrumino::free(int address, int type)
         EEPROM.write(address+1,255);
         EEPROM.write(address+2,255);
         EEPROM.write(address+3,255);
-        updateFreeMemory(4);
+        EEPROM.commit();
+        EEPROM.put(FREE_MEMORY,(getFreeMemory()+4));
         EEPROM.commit();
         return true;
     }
@@ -422,7 +419,7 @@ bool Agrumino::free(int address, int type)
 //returns a boolean depeinding on if the passed address contains datas or not
 bool Agrumino::isFree(int address)
 {
-    //preventing the user from accessing reserve addresses
+    //preventing the user from accessing reserved addresses
     if(address<10)
         return false;
     if(EEPROM.read(address)==255)
@@ -431,22 +428,29 @@ bool Agrumino::isFree(int address)
 
 }
 
+/*tells the user the first address "of interest".
+  This information is initialized the first time as the first user address, but must
+  be managed by the user itself. Its purpose is to tell the user where the data that
+  he wants to read begins.*/
 int Agrumino::getStartAddress()
 {
     return EEPROM.read(START_ADDRESS);
 }
 
+//setter for the previous address: must be handled by the user
 void Agrumino::setStartAddress(int val)
 {
     EEPROM.put(START_ADDRESS,val);
     EEPROM.commit();
 }
 
+//returns to the user how many hours has been passed since the last data push
 int Agrumino::getHours()
 {
     return EEPROM.read(HOURS);
 }
 
+//increaser for the hours register
 void Agrumino::incrHours()
 {
     int h = getHours();
@@ -454,22 +458,10 @@ void Agrumino::incrHours()
     EEPROM.commit();
 }
 
+//resets the hours register
 void Agrumino::RSTHours()
 {
     EEPROM.put(HOURS,0);
-    EEPROM.commit();
-}
-
-//for code readibility: updates the two registers with a specific byte offset
-void Agrumino::updateLastAddress(int byte)
-{
-    EEPROM.put(LASTFREEADD,(getLastAvaiableAddress()+byte));
-    EEPROM.commit();
-}
-
-void Agrumino::updateFreeMemory(int byte)
-{
-    EEPROM.put(FREE_MEMORY,(getFreeMemory()+byte));
     EEPROM.commit();
 }
 
@@ -477,7 +469,7 @@ void Agrumino::updateFreeMemory(int byte)
   This means that the flash memory is threated as a linear list, and it is not
   possible to manually write specific bytes. If the user wants to write to specific
   bytes the arbitrary functions should be used (scroll down). It must be noted that
-  the use of the non-arbitrary functions give sense to the LASTFREEADD byte, that
+  the use of the sequential write functions give sense to the LASTFREEADD byte, that
   shoudln't be used otherwise*/
 
 bool Agrumino::intWrite(int value)
@@ -490,8 +482,10 @@ bool Agrumino::intWrite(int value)
 
     //writing the data, updating the last free address and free memory
     EEPROM.write(lastAvaiableAddress,value);
-    updateFreeMemory(-1);
-    updateLastAddress(1);
+    EEPROM.put(FREE_MEMORY,(getFreeMemory()-1));
+    EEPROM.commit();
+    EEPROM.put(LASTFREEADD,(getLastAvaiableAddress()+1));
+    EEPROM.commit();
 
     //setting the dirty flag
     setDirty(true);
@@ -524,8 +518,10 @@ bool Agrumino::floatWrite(float value)
     EEPROM.write(lastAvaiableAddress+2, u.b[2]);
     EEPROM.write(lastAvaiableAddress+3, u.b[3]);
 
-    updateFreeMemory(-4);
-    updateLastAddress(4);
+    EEPROM.put(FREE_MEMORY,(getFreeMemory()-4));
+    EEPROM.commit();
+    EEPROM.put(LASTFREEADD,(getLastAvaiableAddress()+4));
+    EEPROM.commit();
 
     setDirty(true);
     return true;
@@ -541,8 +537,10 @@ bool Agrumino::charWrite(char value)
     EEPROM.write(lastAvaiableAddress,value);
     EEPROM.commit();
 
-    updateFreeMemory(-1);
-    updateLastAddress(1);
+    EEPROM.put(FREE_MEMORY,(getFreeMemory()-1));
+    EEPROM.commit();
+    EEPROM.put(LASTFREEADD,(getLastAvaiableAddress()+1));
+    EEPROM.commit();
 
     setDirty(true);
     return true;
@@ -558,23 +556,31 @@ bool Agrumino::boolWrite(bool value)
     EEPROM.write(lastAvaiableAddress,value);
     EEPROM.commit();
 
-    updateFreeMemory(-1);
-    updateLastAddress(1);
+    EEPROM.put(FREE_MEMORY,(getFreeMemory()-1));
+    EEPROM.commit();
+    EEPROM.put(LASTFREEADD,(getLastAvaiableAddress()+1));
+    EEPROM.commit();
 
     setDirty(true);
     return true;
 }
 
-/*the following functions allow the user to read stored data*/
-
+/*the following functions allow the user to read stored data and returns -1 in fail case*/
 int Agrumino::intRead(int address)
 {
+    //illegal read: trying to read the reserved addresses or a non-existent address
+    if(address<USERSPACE || address>(MAX_MEMORY-1))
+        return -1;
     return EEPROM.read(address);
 }
 
 float Agrumino::floatRead(int address)
 {
-    //reconstructing the original float values
+    //illegal read: trying to read the reserved addresses or a non-existent address
+    if(address<USERSPACE || address>(MAX_MEMORY-1) || (address+3)>(MAX_MEMORY-1))
+        return (float) -1.0;
+
+    //reconstructing the original float value
     union u_tag
     {
       byte b[4];
@@ -590,11 +596,19 @@ float Agrumino::floatRead(int address)
 
 char Agrumino::charRead(int address)
 {
+    //illegal read: trying to read the reserved addresses or a non-existent address
+    if(address<USERSPACE || address>(MAX_MEMORY-1))
+        return -1;
+
     return (char) EEPROM.read(address);
 }
 
 bool Agrumino::boolRead(int address)
 {
+    //illegal read: trying to read the reserved addresses or a non-existent address
+    if(address<USERSPACE || address>(MAX_MEMORY-1))
+        return -1;
+
     return (bool) EEPROM.read(address);
 }
 
@@ -605,7 +619,7 @@ bool Agrumino::boolRead(int address)
 
 bool Agrumino::intArbitraryWrite(int address, int value)
 {
-    if(address>MAX_MEMORY-1 || address<10)
+    if(address>MAX_MEMORY-1 || address<USERSPACE)
         return false;
 
     int lastAvaiableAddress = getLastAvaiableAddress();
@@ -616,12 +630,17 @@ bool Agrumino::intArbitraryWrite(int address, int value)
 
     //the only case in which LASTFREEADD is still useful
     if(address = lastAvaiableAddress)
-        updateLastAddress(1);
+    {
+        EEPROM.put(LASTFREEADD,(getLastAvaiableAddress()+1));
+        EEPROM.commit();
+    }
 
     //if writing on a free address we can update the free memory information
     if(avaiability)
-        updateFreeMemory(-1);
-
+    {
+        EEPROM.put(FREE_MEMORY,(getFreeMemory()-1));
+        EEPROM.commit();
+    }
     setDirty(true);
 
     return true;
@@ -629,7 +648,7 @@ bool Agrumino::intArbitraryWrite(int address, int value)
 
 bool Agrumino::floatArbitraryWrite(int address, float value)
 {
-    if(address+3>MAX_MEMORY-1 || address<10)
+    if(address>(MAX_MEMORY-1) || (address+3)>(MAX_MEMORY-1) || address<USERSPACE)
         return false;
 
     int lastAvaiableAddress = getLastAvaiableAddress();
@@ -653,9 +672,15 @@ bool Agrumino::floatArbitraryWrite(int address, float value)
     EEPROM.write(address+3, u.b[3]);
 
     if(address==lastAvaiableAddress)
-        updateLastAddress(4);
+    {
+        EEPROM.put(FREE_MEMORY,(getFreeMemory()));
+        EEPROM.commit();
+    }
     if(avaiability)
-        updateFreeMemory(-4);
+    {
+        EEPROM.put(FREE_MEMORY,(getFreeMemory()-4));
+        EEPROM.commit();
+    }
 
     setDirty(true);
     return true;
@@ -663,7 +688,7 @@ bool Agrumino::floatArbitraryWrite(int address, float value)
 
 bool Agrumino::charArbitraryWrite(int address, char value)
 {
-    if(address>MAX_MEMORY-1 || address<10)
+    if(address>MAX_MEMORY-1 || address<USERSPACE)
         return false;
 
     int lastAvaiableAddress = getLastAvaiableAddress();
@@ -675,10 +700,16 @@ bool Agrumino::charArbitraryWrite(int address, char value)
     EEPROM.commit();
 
     if(address=lastAvaiableAddress)
-        updateLastAddress(1);
+    {
+        EEPROM.put(LASTFREEADD,(getLastAvaiableAddress()+1));
+        EEPROM.commit();
+    }
 
     if(avaiability)
-        updateFreeMemory(-1);
+    {
+        EEPROM.put(FREE_MEMORY,(getFreeMemory()-1));
+        EEPROM.commit();
+    }
 
     setDirty(true);
     return true;
@@ -686,7 +717,7 @@ bool Agrumino::charArbitraryWrite(int address, char value)
 
 bool Agrumino::boolArbitraryWrite(int address, bool value)
 {
-    if(address>MAX_MEMORY-1 || address<10)
+    if(address>MAX_MEMORY-1 || address<USERSPACE)
         return false;
 
     int lastAvaiableAddress = getLastAvaiableAddress();
@@ -698,10 +729,16 @@ bool Agrumino::boolArbitraryWrite(int address, bool value)
     EEPROM.commit();
 
     if(address==lastAvaiableAddress)
-        updateLastAddress(1);
+    {
+        EEPROM.put(LASTFREEADD,(getLastAvaiableAddress()+1));
+        EEPROM.commit();
+    }
 
     if(avaiability)
-        updateFreeMemory(-1);
+    {
+        EEPROM.put(FREE_MEMORY,(getFreeMemory()-1));
+        EEPROM.commit();
+    }
 
     setDirty(true);
     return true;

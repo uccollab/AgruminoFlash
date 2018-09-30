@@ -10,9 +10,12 @@ void setup() {
 
 void loop() {
   Serial.begin(115200);
+  Serial.println("Setting Up Agrumino");
   agrumino.setup();
+  Serial.println("Turning Board On");
   agrumino.turnBoardOn();
 
+  Serial.println("Initializing FLASH");
   boolean initialized = agrumino.initializeMemory();
  if(initialized)
  {

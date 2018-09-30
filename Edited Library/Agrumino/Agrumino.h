@@ -61,8 +61,6 @@ class Agrumino {
     int getLastAvaiableAddress();
     bool free(int address, int type);
     bool isFree(int address);
-    void updateFreeMemory(int byte);
-    void updateLastAddress(int byte);
     bool intWrite(int value);
     bool floatWrite(float value);
     bool charWrite(char value);

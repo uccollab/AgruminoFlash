@@ -43,11 +43,13 @@ void loop() {
   for(int i=0; i<10; i++)
   {
     Serial.println("-------------------");
-    Serial.println("SUCCESSFUL (1=YES 0=NO): "+String(agrumino.intWrite(1)));
+    Serial.println("WRITING: "+String(i)+" AT INDEX "+String(agrumino.getLastAvaiableAddress()));
+    Serial.println("SUCCESSFUL (1=YES 0=NO): "+String(agrumino.intWrite(i)));
     Serial.println("LAST FREE ADDRESS: "+String(agrumino.getLastAvaiableAddress()));
     Serial.println("FREE MEMORY: "+String(agrumino.getFreeMemory())+"B");
-    Serial.println("-------------------");
+    delay(3000);
   }
+  Serial.println("-------------------");
   //the register of the last int
   int endInts = agrumino.getLastAvaiableAddress()-1;
 
@@ -57,6 +59,7 @@ void loop() {
   Serial.println("------------------------");
   
   //let's restart
+  Serial.println("Re-cleaning the memory");
   initialized = agrumino.initializeMemory();
 
   /*Saving 2 ints, 4 floats, 2 bools and a char, then reading them*/
@@ -80,17 +83,22 @@ void loop() {
     agrumino.charWrite(1.3);
   int endChars = agrumino.getLastAvaiableAddress()-1; //note that for every float there's a 4B jump
 
-  Serial.println("If it is all right, then I should have jumped from address "+String(beginInts)+" to address "+String(beginInts+2+(4*4)+(2)+1)+" ---> "+String(agrumino.getLastAvaiableAddress()));
+  Serial.println("Wrote 2 ints, 4 floats, 2 booleans, 1 char = 1*2 + 4*4 + 1*2 + 1 = 21B of data");
+  delay(5000);
+  Serial.println("If it is all right, then I should have jumped from address "+String(beginInts)+" to address "+String(beginInts+2+(4*4)+(2)+1)+" ---> "+" LAST FREE ADD: "+String(agrumino.getLastAvaiableAddress()));
 
   //printing the floats
+  Serial.println("Printing the floats: ");
   for(int i=beginFloats; i<endFloats; i+=4)
-    Serial.println("Here's a float: "+String(agrumino.floatRead(i)));
+    Serial.println(String(agrumino.floatRead(i)));
 
   //casual access: overriding the second integer with a char
+  Serial.println("Overriding the second int I wrote with 'c' char.");
   agrumino.charArbitraryWrite(beginChars+1,'c');
-  Serial.println("Is it a char? --> "+String(agrumino.charRead(beginChars+1)));
+  Serial.println("Printing the char --> "+String(agrumino.charRead(beginChars+1)));
 
   //now freeing up that address
+  Serial.println("Freeing that address");
   agrumino.free(beginChars+1,0);
 
   //and checking if it worked!
