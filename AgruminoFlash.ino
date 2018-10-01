@@ -94,8 +94,8 @@ void loop() {
 
   //casual access: overriding the second integer with a char
   Serial.println("Overriding the second int I wrote with 'c' char.");
-  agrumino.charArbitraryWrite(beginChars+1,'c');
-  Serial.println("Printing the char --> "+String(agrumino.charRead(beginChars+1)));
+  agrumino.charArbitraryWrite(beginInts+1,'c');
+  Serial.println("Printing the char --> "+String(agrumino.charRead(beginInts+1)));
 
   //now freeing up that address
   Serial.println("Freeing that address");
